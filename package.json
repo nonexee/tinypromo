@@ -17,6 +17,7 @@
     "tailwindcss": "latest"
   },
   "devDependencies": {
+    "@tsconfig/next": "^2.0.3",
     "@types/node": "^22.15.18",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
