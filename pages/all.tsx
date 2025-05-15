@@ -1,5 +1,5 @@
-import { GetStaticProps, GetStaticPaths } from 'next';
-import { ParsedUrlQuery } from 'querystring';
+// pages/all.tsx
+import { GetServerSideProps } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Layout from '@/components/Layout';
 import ServiceCard from '@/components/ServiceCard';
@@ -8,14 +8,25 @@ import { useMemo, useState } from 'react';
 
 const PAGE_SIZE = 12;
 
+type Provider = {
+  id: string;
+  name: string;
+  city: string;
+  service: string;
+  whatsapp: string;
+  tagline: string;
+  photo?: string;
+  created_at: string;
+};
+
 interface Props {
-  providers: any[];
+  providers: Provider[];
   total: number;
   page: number;
 }
 
 export default function All({ providers, total, page }: Props) {
-  /* —–––– client-side filters —–––– */
+  /* client-side search / filter state */
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string | null>(null);
 
@@ -28,7 +39,7 @@ export default function All({ providers, total, page }: Props) {
     return providers.filter((p) => {
       const matchesQ =
         p.name.toLowerCase().includes(q.toLowerCase()) ||
-        p.tagline?.toLowerCase().includes(q.toLowerCase());
+        (p.tagline ?? '').toLowerCase().includes(q.toLowerCase());
       const matchesCat = category ? p.service === category : true;
       return matchesQ && matchesCat;
     });
@@ -38,7 +49,7 @@ export default function All({ providers, total, page }: Props) {
     <Layout title="All services">
       <h1 className="text-2xl font-semibold mb-4">All services</h1>
 
-      {/* Search box */}
+      {/* search box */}
       <input
         className="border p-2 rounded w-full max-w-sm mb-4"
         placeholder="Search by name or keyword…"
@@ -46,8 +57,8 @@ export default function All({ providers, total, page }: Props) {
         onChange={(e) => setQ(e.target.value)}
       />
 
-      {/* Category chips */}
-      <div className="flex gap-2 overflow-x-auto mb-6">
+      {/* category chips */}
+      <div className="flex gap-2 flex-wrap mb-6">
         <button
           onClick={() => setCategory(null)}
           className={`px-3 py-1 rounded-full text-sm ${
@@ -69,33 +80,26 @@ export default function All({ providers, total, page }: Props) {
         ))}
       </div>
 
-      {/* Cards */}
+      {/* provider cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((p) => (
           <ServiceCard key={p.id} provider={p} />
         ))}
       </div>
 
-      {/* Pager (only shows if no filters) */}
+      {/* pager (only when no client filters) */}
       {category === null && q === '' && (
-        <Pagination
-          page={page}
-          hasMore={page * PAGE_SIZE < total}
-        />
+        <Pagination page={page} hasMore={page * PAGE_SIZE < total} />
       )}
     </Layout>
   );
 }
 
-/* ––––– ISR with page params ––––– */
-interface Params extends ParsedUrlQuery {
-  page?: string;
-}
-
-export const getStaticProps: GetStaticProps<Props, Params> = async ({
-  params,
+/* — server-side pagination — */
+export const getServerSideProps: GetServerSideProps<Props> = async ({
+  query,
 }) => {
-  const page = params?.page ? parseInt(params.page, 10) : 1;
+  const page = query.page ? parseInt(query.page as string, 10) : 1;
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
@@ -116,14 +120,6 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({
       total: count ?? 0,
       page,
     },
-    revalidate: 30,
   };
 };
 
-export const getStaticPaths: GetStaticPaths<Params> = async () => {
-  /* Pre-generate only the first page to keep build fast */
-  return {
-    paths: [{ params: { page: '1' } }],
-    fallback: 'blocking',
-  };
-};
