@@ -1,10 +1,11 @@
 // pages/all.tsx
 import { GetServerSideProps } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { useMemo, useState } from 'react';
+
 import Layout from '@/components/Layout';
 import ServiceCard from '@/components/ServiceCard';
 import Pagination from '@/components/Pagination';
-import { useMemo, useState } from 'react';
 
 const PAGE_SIZE = 12;
 
@@ -17,6 +18,7 @@ type Provider = {
   tagline: string;
   photo?: string;
   created_at: string;
+  avg_rating?: number;
 };
 
 interface Props {
@@ -26,7 +28,7 @@ interface Props {
 }
 
 export default function All({ providers, total, page }: Props) {
-  /* client-side search / filter state */
+  /* client-side filters */
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string | null>(null);
 
@@ -49,7 +51,7 @@ export default function All({ providers, total, page }: Props) {
     <Layout title="All services">
       <h1 className="text-2xl font-semibold mb-4">All services</h1>
 
-      {/* search box */}
+      {/* search */}
       <input
         className="border p-2 rounded w-full max-w-sm mb-4"
         placeholder="Search by name or keyword…"
@@ -62,7 +64,7 @@ export default function All({ providers, total, page }: Props) {
         <button
           onClick={() => setCategory(null)}
           className={`px-3 py-1 rounded-full text-sm ${
-            category === null ? 'bg-blue-600 text-white' : 'bg-gray-200'
+            category === null ? 'bg-brand text-white' : 'bg-gray-200 dark:bg-gray-700'
           }`}
         >
           All
@@ -72,7 +74,7 @@ export default function All({ providers, total, page }: Props) {
             key={c}
             onClick={() => setCategory(c)}
             className={`px-3 py-1 rounded-full text-sm capitalize ${
-              category === c ? 'bg-blue-600 text-white' : 'bg-gray-200'
+              category === c ? 'bg-brand text-white' : 'bg-gray-200 dark:bg-gray-700'
             }`}
           >
             {c}
@@ -80,14 +82,14 @@ export default function All({ providers, total, page }: Props) {
         ))}
       </div>
 
-      {/* provider cards */}
+      {/* cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((p) => (
           <ServiceCard key={p.id} provider={p} />
         ))}
       </div>
 
-      {/* pager (only when no client filters) */}
+      {/* pagination only when unfiltered */}
       {category === null && q === '' && (
         <Pagination page={page} hasMore={page * PAGE_SIZE < total} />
       )}
@@ -95,7 +97,7 @@ export default function All({ providers, total, page }: Props) {
   );
 }
 
-/* — server-side pagination — */
+/* -------- server-side pagination -------- */
 export const getServerSideProps: GetServerSideProps<Props> = async ({
   query,
 }) => {
@@ -122,4 +124,3 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     },
   };
 };
-

@@ -1,40 +1,80 @@
+// pages/[city]/[service].tsx
 import { GetServerSideProps } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { useState } from 'react';
+
 import Layout from '@/components/Layout';
 import ServiceCard from '@/components/ServiceCard';
+import Breadcrumb from '@/components/Breadcrumb';
+import ReviewModal from '@/components/ReviewModal';
 
-export default function Directory({ providers, city, service }: any) {
+type Provider = {
+  id: string;
+  name: string;
+  city: string;
+  service: string;
+  whatsapp: string;
+  tagline: string;
+  photo?: string;
+  avg_rating?: number;
+};
+
+interface Props {
+  providers: Provider[];
+  city: string;
+  service: string;
+}
+
+export default function DirectoryPage({ providers, city, service }: Props) {
+  const [showReview, setShowReview] = useState(false);
+
   return (
     <Layout title={`${service} in ${city}`}>
-      <h1 className='text-2xl font-semibold mb-4 capitalize'>
-        {service} in {city}
-      </h1>
-      <div className='grid gap-4 md:grid-cols-2'>
-        {providers.map((p: any) => (
+      <Breadcrumb city={city} service={service} />
+
+      <header className="flex items-baseline justify-between mb-4">
+        <h1 className="text-2xl font-semibold capitalize">
+          {service} in {city}
+        </h1>
+        <button onClick={() => setShowReview(true)} className="underline text-sm">
+          Add review
+        </button>
+      </header>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {providers.map((p) => (
           <ServiceCard key={p.id} provider={p} />
         ))}
       </div>
+
+      {showReview && (
+        <ReviewModal
+          providerId={providers[0]?.id ?? ''}
+          onClose={() => setShowReview(false)}
+        />
+      )}
     </Layout>
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+/* -------- server data -------- */
+export const getServerSideProps: GetServerSideProps<Props> = async ({
+  params,
+}) => {
+  const city = (params?.city as string).toLowerCase();
+  const service = (params?.service as string).toLowerCase();
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data } = await supabase
+  const { data: providers = [] } = await supabase
     .from('providers')
     .select('*')
-    .eq('city', params!.city)
-    .eq('service', params!.service);
+    .eq('city', city)
+    .eq('service', service)
+    .order('created_at', { ascending: false });
 
-  return {
-    props: {
-      providers: data || [],
-      city: params!.city,
-      service: params!.service,
-    },
-  };
+  return { props: { providers, city, service } };
 };
