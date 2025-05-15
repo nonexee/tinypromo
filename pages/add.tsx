@@ -1,11 +1,11 @@
 import Layout from '@/components/Layout';
-import ProviderForm from '@/components/ProviderForm';
+import ProviderFormWizard from '@/components/ProviderFormWizard';
 
-export default function AddService() {
+export default function Add() {
   return (
     <Layout title="Add your service">
       <h1 className="text-2xl font-semibold mb-4">Add your service</h1>
-      <ProviderForm />
+      <ProviderFormWizard />
     </Layout>
   );
 }
