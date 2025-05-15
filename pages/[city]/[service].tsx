@@ -1,4 +1,3 @@
-// pages/[city]/[service].tsx
 import { GetServerSideProps } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { useState } from 'react';
@@ -27,6 +26,7 @@ interface Props {
 
 export default function DirectoryPage({ providers, city, service }: Props) {
   const [showReview, setShowReview] = useState(false);
+  const firstId = providers[0]?.id ?? '';
 
   return (
     <Layout title={`${service} in ${city}`}>
@@ -36,9 +36,11 @@ export default function DirectoryPage({ providers, city, service }: Props) {
         <h1 className="text-2xl font-semibold capitalize">
           {service} in {city}
         </h1>
-        <button onClick={() => setShowReview(true)} className="underline text-sm">
-          Add review
-        </button>
+        {firstId && (
+          <button onClick={() => setShowReview(true)} className="underline text-sm">
+            Add review
+          </button>
+        )}
       </header>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -48,16 +50,13 @@ export default function DirectoryPage({ providers, city, service }: Props) {
       </div>
 
       {showReview && (
-        <ReviewModal
-          providerId={providers[0]?.id ?? ''}
-          onClose={() => setShowReview(false)}
-        />
+        <ReviewModal providerId={firstId} onClose={() => setShowReview(false)} />
       )}
     </Layout>
   );
 }
 
-/* -------- server data -------- */
+/* -------- data -------- */
 export const getServerSideProps: GetServerSideProps<Props> = async ({
   params,
 }) => {
@@ -74,6 +73,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({
     .select('*')
     .eq('city', city)
     .eq('service', service)
+    .order('avg_rating', { ascending: false })
     .order('created_at', { ascending: false });
 
   return { props: { providers, city, service } };
