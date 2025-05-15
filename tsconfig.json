@@ -1,0 +1,14 @@
+{
+  "extends": "next/core-web-vitals",
+  "compilerOptions": {
+    "strict": true,
+    "target": "es6",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  }
+}
