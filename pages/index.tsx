@@ -1,22 +1,73 @@
 import { GetStaticProps } from 'next';
+import Head from 'next/head';
 import { createClient } from '@supabase/supabase-js';
 import Layout from '@/components/Layout';
 import ServiceCard from '@/components/ServiceCard';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-type Props = {
-  latest: any[];
-  categories: string[];
+type Provider = {
+  id: string;
+  name: string;
+  city: string;
+  service: string;
+  whatsapp: string;
+  tagline: string;
+  photo?: string;
 };
 
-export default function Home({ latest, categories }: Props) {
-  /* local search */
+type Props = {
+  latest: Provider[];
+  categories: string[];
+  cities: string[];
+};
+
+export default function Home({ latest, categories, cities }: Props) {
+  /* Hero search state */
   const [city, setCity] = useState('');
   const [service, setService] = useState('');
 
+  /* Prefill city from geolocation */
+  useEffect(() => {
+    if (navigator.geolocation && city === '') {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await res.json();
+          if (data.address?.city) setCity(data.address.city.toLowerCase());
+        } catch (_) {
+          /* silent fail */
+        }
+      });
+    }
+  }, [city]);
+
+  /* Helper builds JSON-LD */
+  const buildJsonLd = (p: Provider) => ({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: p.name,
+    description: p.tagline,
+    areaServed: p.city,
+    url: `https://tinypromo.vercel.app/${p.city}/${p.service}#${p.id}`,
+    telephone: p.whatsapp ? `+${p.whatsapp}` : undefined,
+    image: p.photo,
+  });
+
   return (
     <Layout>
+      <Head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(latest.map(buildJsonLd)),
+          }}
+        />
+      </Head>
+
       {/* ── Hero ─────────────────────────────────── */}
       <section className="py-20 bg-gradient-to-b from-blue-50 to-transparent text-center">
         <h1 className="text-4xl font-bold mb-4">
@@ -28,18 +79,34 @@ export default function Home({ latest, categories }: Props) {
 
         {/* Search inputs */}
         <div className="mx-auto flex flex-col sm:flex-row gap-3 w-full max-w-lg">
+          {/* city input w/ datalist */}
           <input
+            list="city-list"
             className="border p-3 rounded flex-1"
             placeholder="City (e.g. belgrade)"
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
+          <datalist id="city-list">
+            {cities.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </datalist>
+
+          {/* service input w/ datalist */}
           <input
+            list="service-list"
             className="border p-3 rounded flex-1"
             placeholder="Service (e.g. cleaners)"
             value={service}
             onChange={(e) => setService(e.target.value)}
           />
+          <datalist id="service-list">
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </datalist>
+
           <Link
             href={
               city && service
@@ -118,21 +185,18 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
     .order('created_at', { ascending: false })
     .limit(6);
 
-  /* Distinct top categories by frequency */
-  const { data: allCats = [] } = await supabase
+  /* All providers list for datalists */
+  const { data: all = [] } = await supabase
     .from('providers')
-    .select('service');
+    .select('city, service');
 
-  const freq: Record<string, number> = {};
-  allCats.forEach((p) => {
-    freq[p.service] = (freq[p.service] || 0) + 1;
-  });
-  const categories = Object.keys(freq)
-    .sort((a, b) => freq[b] - freq[a]) /* descending popularity */
-    .slice(0, 10); /* top-10 */
+  const categories = Array.from(
+    new Set(all.map((p) => p.service))
+  ).slice(0, 25); /* first 25 unique */
+  const cities = Array.from(new Set(all.map((p) => p.city))).slice(0, 50);
 
   return {
-    props: { latest, categories },
+    props: { latest, categories, cities },
     revalidate: 30,
   };
 };
