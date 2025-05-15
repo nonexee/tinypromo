@@ -12,6 +12,7 @@ export default function Layout({ children, title }: { children: ReactNode; title
       <header className='w-full p-4 bg-white shadow'>
         <nav className='max-w-4xl mx-auto flex justify-between'>
           <Link href='/' className='font-bold text-lg'>TinyPromo</Link>
+          <Link href="/all" className="text-sm underline">Browse all</Link>
           <Link href='/add' className='text-sm underline'>Add your service</Link>
         </nav>
       </header>
